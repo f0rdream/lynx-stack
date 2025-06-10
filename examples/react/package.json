@@ -12,6 +12,8 @@
     "@lynx-js/react": "workspace:*"
   },
   "devDependencies": {
+    "@byted-lynx/worklet-common": "workspace:*",
+    "@lynx-js/motion-lynx": "workspace:*",
     "@lynx-js/qrcode-rsbuild-plugin": "workspace:*",
     "@lynx-js/react-rsbuild-plugin": "workspace:*",
     "@lynx-js/rspeedy": "workspace:*",

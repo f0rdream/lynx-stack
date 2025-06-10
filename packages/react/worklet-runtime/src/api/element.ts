@@ -1,10 +1,16 @@
-// Copyright 2024 The Lynx Authors. All rights reserved.
+// Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-export class Element {
-  private static willFlush = false;
+interface StyleObject {
+  [key: string]: string | ((property: string, value: string) => void);
+  setProperty(property: string, value: string): void;
+}
 
-  // @ts-expect-error set in constructor
+export class Element {
+  private static willFlush: boolean;
+  private styles = new Map<string, string>();
+
+  // @ts-expect-error internal use
   private readonly element: ElementNode;
 
   constructor(element: ElementNode) {
@@ -24,15 +30,168 @@ export class Element {
   }
 
   public setStyleProperty(name: string, value: string): void {
-    __AddInlineStyle(this.element, name, value);
+    // Convert camelCase to kebab-case for CSS property names
+    const cssProperty = name.replace(/([A-Z])/g, '-$1').toLowerCase();
+    __AddInlineStyle(this.element, cssProperty, value);
+    this.styles.set(name, value);
     this.flushElementTree();
   }
 
   public setStyleProperties(styles: Record<string, string>): void {
     for (const key in styles) {
-      __AddInlineStyle(this.element, key, styles[key]!);
+      const value = styles[key];
+      if (value !== undefined) {
+        this.setStyleProperty(key, value);
+      }
     }
-    this.flushElementTree();
+  }
+
+  public getComputedStyle(): Record<string, string> {
+    const styleObject: Record<string, string> = {
+      // Default values for common CSS properties
+      display: 'flex',
+      position: 'relative',
+      width: 'auto',
+      height: 'auto',
+      margin: '0',
+      padding: '0',
+      backgroundColor: 'transparent',
+      color: '#000000',
+      fontSize: '14px',
+      opacity: '1',
+      transform: 'none',
+      transition: 'none',
+    };
+
+    // Override with actual set styles
+    this.styles.forEach((value, key) => {
+      // Convert camelCase to kebab-case for CSS property names
+      const cssProperty = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+      styleObject[cssProperty] = value;
+    });
+
+    return styleObject;
+  }
+
+  public get style(): StyleObject {
+    const styleObject = {} as StyleObject;
+    this.styles.forEach((value, key) => {
+      styleObject[key] = value;
+    });
+    styleObject.setProperty = (property: string, value: string) => {
+      this.setStyleProperty(property, value);
+    };
+    return new Proxy(styleObject, {
+      set: (target, prop, value) => {
+        if (typeof prop === 'string' && prop !== 'setProperty') {
+          this.setStyleProperty(prop, String(value));
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          target[prop] = value;
+        }
+        return true;
+      },
+    });
+  }
+
+  public set style(styles: Record<string, string>) {
+    this.setStyleProperties(styles);
+  }
+
+  // Individual style property getters and setters
+  private getStyleProperty(name: string): string {
+    return this.styles.get(name) ?? '';
+  }
+
+  // Common style properties
+  get backgroundColor(): string {
+    return this.getStyleProperty('backgroundColor');
+  }
+  set backgroundColor(value: string) {
+    this.setStyleProperty('backgroundColor', value);
+  }
+
+  get color(): string {
+    return this.getStyleProperty('color');
+  }
+  set color(value: string) {
+    this.setStyleProperty('color', value);
+  }
+
+  get fontSize(): string {
+    return this.getStyleProperty('fontSize');
+  }
+  set fontSize(value: string) {
+    this.setStyleProperty('fontSize', value);
+  }
+
+  get width(): string {
+    return this.getStyleProperty('width');
+  }
+  set width(value: string) {
+    this.setStyleProperty('width', value);
+  }
+
+  get height(): string {
+    return this.getStyleProperty('height');
+  }
+  set height(value: string) {
+    this.setStyleProperty('height', value);
+  }
+
+  get margin(): string {
+    return this.getStyleProperty('margin');
+  }
+  set margin(value: string) {
+    this.setStyleProperty('margin', value);
+  }
+
+  get padding(): string {
+    return this.getStyleProperty('padding');
+  }
+  set padding(value: string) {
+    this.setStyleProperty('padding', value);
+  }
+
+  get display(): string {
+    return this.getStyleProperty('display');
+  }
+  set display(value: string) {
+    this.setStyleProperty('display', value);
+  }
+
+  get position(): string {
+    return this.getStyleProperty('position');
+  }
+  set position(value: string) {
+    this.setStyleProperty('position', value);
+  }
+
+  get top(): string {
+    return this.getStyleProperty('top');
+  }
+  set top(value: string) {
+    this.setStyleProperty('top', value);
+  }
+
+  get left(): string {
+    return this.getStyleProperty('left');
+  }
+  set left(value: string) {
+    this.setStyleProperty('left', value);
+  }
+
+  get right(): string {
+    return this.getStyleProperty('right');
+  }
+  set right(value: string) {
+    this.setStyleProperty('right', value);
+  }
+
+  get bottom(): string {
+    return this.getStyleProperty('bottom');
+  }
+  set bottom(value: string) {
+    this.setStyleProperty('bottom', value);
   }
 
   public getAttribute(attributeName: string): unknown {
