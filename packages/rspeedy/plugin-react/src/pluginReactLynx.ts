@@ -305,6 +305,10 @@ export interface PluginReactLynxOptions {
    * @alpha
    */
   experimental_isLazyBundle?: boolean
+
+  worklet?: {
+    customGlobalIdentNames?: string[]
+  }
 }
 
 /**
@@ -348,6 +352,7 @@ export function pluginReactLynx(
     removeDescendantSelectorScope: true,
     shake: undefined,
     defineDCE: undefined,
+    worklet: {},
 
     // The following two default values are useless, since they will be overridden by `engineVersion`
     targetSdkVersion: '',

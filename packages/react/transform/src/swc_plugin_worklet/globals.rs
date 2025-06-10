@@ -100,5 +100,6 @@ pub static LYNX_GLOBALS: Lazy<HashSet<&str>> = Lazy::new(|| {
   m.insert("__DEV__");
   m.insert("runOnMainThread");
   m.insert("runOnBackground");
+  m.insert("runOnRegistered");
   m
 });

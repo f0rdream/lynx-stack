@@ -46,3 +46,5 @@ declare function __QuerySelectorAll(
 ): ElementNode[];
 
 declare function __SetAttribute(e: ElementNode, key: string, value: unknown): void;
+
+declare function __GetComputedStyleByKey(e: ElementNode, key: string): string | undefined;

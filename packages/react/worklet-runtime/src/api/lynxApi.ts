@@ -1,10 +1,13 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+import { Element } from './element.js';
 import { querySelector, querySelectorAll } from './lepusQuerySelector.js';
 import { isSdkVersionGt } from '../utils/version.js';
 
 function initApiEnv(): void {
+  // @ts-expect-error type
+  globalThis.Element = Element;
   // @ts-expect-error type
   lynx.querySelector = querySelector;
   // @ts-expect-error type
