@@ -9,10 +9,11 @@ import './lynx.js';
 
 import { factory as factory2 } from './compat/componentIs.js';
 import { useMemo } from './hooks/react.js';
-import { snapshotCreateList } from './list.js';
 import { loadLazyBundle } from './lynx/lazy-bundle.js';
 import { __root } from './root.js';
-import { DynamicPartType, SnapshotInstance, __page, __pageId, createSnapshot, snapshotManager } from './snapshot.js';
+import { DynamicPartType } from './snapshot/dynamicPartType.js';
+import { snapshotCreateList } from './snapshot/list.js';
+import { SnapshotInstance, __page, __pageId, createSnapshot, snapshotManager } from './snapshot.js';
 
 export { __page, __pageId, __root };
 
@@ -22,7 +23,7 @@ export const __DynamicPartSlot: DynamicPartType = DynamicPartType.Slot;
 export const __DynamicPartMultiChildren: DynamicPartType = DynamicPartType.MultiChildren;
 export const __DynamicPartChildren: DynamicPartType = DynamicPartType.Children;
 export const __DynamicPartListChildren: DynamicPartType = DynamicPartType.ListChildren;
-export const __DynamicPartChildren_0: [DynamicPartType, number][] = [[DynamicPartType.Children, 0]];
+export { __DynamicPartChildren_0 } from './snapshot.js';
 
 export { updateSpread } from './snapshot/spread.js';
 export { updateEvent } from './snapshot/event.js';

@@ -830,6 +830,14 @@ test.describe('web-elements test suite', () => {
       await gotoWebComponentPage(page, title);
       await diffScreenShot(page, title, '300px-inf');
     });
+    test('x-foldview-ng/basic-toolbar-in-lynx-wrapper', async ({
+      page,
+      browserName,
+    }, { title }) => {
+      await gotoWebComponentPage(page, title);
+      await wait(500);
+      expect(page.locator('x-foldview-slot-ng')).toHaveCSS('top', '200px');
+    });
     test('x-foldview-ng/size-parent-grow-children-specific', async ({
       page,
       browserName,
@@ -1659,6 +1667,34 @@ test.describe('web-elements test suite', () => {
       await gotoWebComponentPage(page, title);
       await diffScreenShot(page, title, 'index');
     });
+    test('crossorigin', async ({ page }, { titlePath }) => {
+      const title = getTitle(titlePath);
+      await gotoWebComponentPage(page, title);
+
+      // Assert that the crossorigin attribute value is passed to the <img> in the shadow tree
+      const crossoriginValue = await page.evaluate(() => {
+        const xImage = document.querySelector('#test-crossorigin');
+        const img = xImage?.shadowRoot?.querySelector('#img');
+        return img?.getAttribute('crossorigin');
+      });
+
+      // Verify that the crossorigin attribute is set to 'anonymous' on the internal img element
+      expect(crossoriginValue).toBe('anonymous');
+    });
+    test('referrerpolicy', async ({ page }, { titlePath }) => {
+      const title = getTitle(titlePath);
+      await gotoWebComponentPage(page, title);
+
+      // Assert that the referrerpolicy attribute value is passed to the <img> in the shadow tree
+      const referrerpolicyValue = await page.evaluate(() => {
+        const xImage = document.querySelector('#test-referrerpolicy');
+        const img = xImage?.shadowRoot?.querySelector('#img');
+        return img?.getAttribute('referrerpolicy');
+      });
+
+      // Verify that the referrerpolicy attribute is set to 'no-referrer' on the internal img element
+      expect(referrerpolicyValue).toBe('no-referrer');
+    });
   });
 
   test.describe('x-list', () => {
@@ -2446,6 +2482,28 @@ test.describe('web-elements test suite', () => {
     );
 
     test(
+      'attribute-autocomplete',
+      async ({ page }, { titlePath, title: simpleTitle }) => {
+        const title = getTitle(titlePath);
+        await gotoWebComponentPage(page, title);
+
+        // Test that autocomplete attribute is passed to the input element in shadow tree
+        const autocompleteValue = await page.locator('#target').evaluate(
+          (dom) => {
+            const shadowRoot = dom.shadowRoot;
+            if (!shadowRoot) return null;
+            const input = shadowRoot.querySelector(
+              '#input',
+            ) as HTMLInputElement;
+            return input ? input.getAttribute('autocomplete') : null;
+          },
+        );
+
+        expect(autocompleteValue).toBe('username');
+      },
+    );
+
+    test(
       'type-value-do-not-show-input',
       async ({ page }, { titlePath, title: simpleTitle }) => {
         const title = getTitle(titlePath);
@@ -2693,7 +2751,7 @@ test.describe('web-elements test suite', () => {
           .locator('#target')
           .evaluateHandle((target) => {
             let detail = { value: undefined };
-            target.addEventListener('input', (e) => {
+            target.addEventListener('lynxinput', (e) => {
               detail.value = (e as any).detail.value;
             });
             return detail;

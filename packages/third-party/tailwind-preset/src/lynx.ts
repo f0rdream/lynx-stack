@@ -1,208 +1,78 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+import type { Config } from 'tailwindcss';
 
-import { display, position, textDecoration } from './plugins/lynx/index.js';
+import {
+  DEFAULT_CORE_PLUGINS,
+  LYNX_PLUGIN_MAP,
+  LYNX_UI_PLUGIN_MAP,
+  ORDERED_LYNX_PLUGIN_NAMES,
+  resolveUIPluginEntries,
+  toEnabledLynxUIPluginSet,
+  toEnabledSet,
+} from './core.js';
+import type {
+  LynxPluginName,
+  LynxPluginsOption,
+  LynxUIPluginsOption,
+} from './core.js';
+import { lynxTheme } from './theme.js';
 
 /**
- * Should be used with Tailwind JIT and configured with purge, otherwise the bundle will be too large.
+ * Should be used with Tailwind v3+ (JIT is enabled by default) and configured with `content`,
+ * otherwise the generated CSS bundle may include unused utilities.
  */
-export default {
-  plugins: [position, textDecoration, display],
-  corePlugins: [
-    // 'preflight',
-    'alignContent',
-    'alignItems',
-    'alignSelf',
 
-    // 'animation',
+function createLynxPreset({
+  lynxPlugins = true,
+  lynxUIPlugins = false,
+  debug = false,
+  theme,
+}: {
+  lynxPlugins?: LynxPluginsOption;
+  lynxUIPlugins?: LynxUIPluginsOption;
+  debug?: boolean;
+  theme?: Config['theme'];
+} = {}): Partial<Config> {
+  const coreSetEnabled = toEnabledSet(lynxPlugins);
+  const uiSetEnabled = toEnabledLynxUIPluginSet(lynxUIPlugins);
 
-    // 'aspectRatio',
+  const defaultPluginName: LynxPluginName = 'defaults';
 
-    'backgroundClip',
-    'backgroundColor',
-    'backgroundImage',
-    'backgroundOrigin',
-    'backgroundPosition',
-    'backgroundRepeat',
-    'backgroundSize',
+  const plugins: Config['plugins'] = [LYNX_PLUGIN_MAP[defaultPluginName]];
 
-    'borderRadius',
-    'borderWidth',
-    'borderStyle',
-    'borderColor',
+  // Lynx Core Plugins
+  for (const name of ORDERED_LYNX_PLUGIN_NAMES) {
+    if (name === 'defaults') continue; // already pushed
+    if (coreSetEnabled.has(name)) {
+      plugins.push(LYNX_PLUGIN_MAP[name]);
+      if (debug) console.debug(`[Lynx] enabled core plugin: ${name}`);
+    }
+  }
 
-    'boxShadow',
-    'boxSizing',
-    'caretColor',
+  // Lynx UI Plugins
+  for (const [name, options] of resolveUIPluginEntries(lynxUIPlugins)) {
+    if (uiSetEnabled.has(name)) {
+      const fn = LYNX_UI_PLUGIN_MAP[name];
+      plugins.push(fn(options));
+      if (debug) console.debug(`[Lynx] enabled UI plugin: ${name}`);
+    }
+  }
 
-    'textColor',
-    // 'content',
+  return {
+    plugins,
+    corePlugins: DEFAULT_CORE_PLUGINS satisfies NonNullable<
+      Config['corePlugins']
+    >,
+    theme: { ...lynxTheme, ...theme },
+  };
+}
 
-    // 'display', // Defined using plugin
-    'flexDirection',
-    'flexGrow',
-    'flexShrink',
-    'flexWrap',
-    'flex',
+const preset: Partial<Config> = createLynxPreset();
 
-    'fontFamily',
-    'fontSize',
-    'fontStyle',
-    'fontWeight',
+export default preset;
 
-    'height',
-    'inset',
+export { createLynxPreset };
 
-    'justifyContent',
-
-    'letterSpacing',
-    'lineHeight',
-
-    'margin',
-    'maxHeight',
-    'maxWidth',
-    'minHeight',
-    'minWidth',
-    'width',
-
-    'opacity',
-    'order',
-    'outline',
-    'overflow',
-
-    'padding',
-    // 'position', // Defined using plugin
-    'zIndex',
-
-    'textAlign',
-    // 'textDecoration', // Replaced with plugin
-    'textOverflow',
-
-    'transformOrigin',
-    'transform',
-    'transitionDelay',
-    'transitionDuration',
-    'transitionProperty',
-    'transitionTimingFunction',
-
-    'translate',
-    'rotate',
-    'scale',
-    'skew',
-
-    'visibility',
-    'whitespace',
-    'wordBreak',
-
-    'gridColumn',
-    'gridColumnStart',
-    'gridColumnEnd',
-    'gridRow',
-    'gridRowStart',
-    'gridRowEnd',
-
-    'gridAutoColumns',
-    'gridAutoFlow',
-    'gridAutoRows',
-    'gridTemplateColumns',
-    'gridTemplateRows',
-    'gap',
-  ],
-};
-
-// Tailwind un-configured corePlugins
-// 'container'
-
-// 'accessibility'
-// 'pointerEvents'
-
-// 'isolation'
-
-// 'float'
-// 'clear'
-
-// 'tableLayout'
-// 'borderCollapse'
-
-// 'animation'
-
-// 'cursor'
-// 'userSelect'
-// 'resize'
-
-// 'listStylePosition'
-// 'listStyleType'
-
-// 'appearance'
-
-// 'placeContent'
-// 'placeItems'
-
-// 'justifyItems'
-// 'gap'
-// 'space'
-// 'divideWidth'
-// 'divideStyle'
-// 'divideColor'
-// 'divideOpacity'
-
-// 'placeSelf'
-// 'justifySelf'
-
-// 'overscrollBehavior'
-
-// 'backgroundOpacity'
-// 'gradientColorStops'
-// 'boxDecorationBreak'
-// 'backgroundAttachment'
-
-// 'fill'
-// 'stroke'
-// 'strokeWidth'
-
-// 'objectFit'
-// 'objectPosition'
-
-// 'verticalAlign'
-
-// 'textTransform'
-
-// 'fontVariantNumeric'
-
-// 'textOpacity'
-
-// 'fontSmoothing'
-// 'placeholderColor'
-// 'placeholderOpacity'
-
-// 'backgroundBlendMode'
-// 'mixBlendMode'
-
-// 'ringWidth'
-// 'ringColor'
-// 'ringOpacity'
-// 'ringOffsetWidth'
-// 'ringOffsetColor'
-
-// 'blur'
-// 'brightness'
-// 'contrast'
-// 'dropShadow'
-// 'grayscale'
-// 'hueRotate'
-// 'invert'
-// 'saturate'
-// 'sepia'
-// 'filter'
-
-// 'backdropBlur'
-// 'backdropBrightness'
-// 'backdropContrast'
-// 'backdropGrayscale'
-// 'backdropHueRotate'
-// 'backdropInvert'
-// 'backdropOpacity'
-// 'backdropSaturate'
-// 'backdropSepia'
-// 'backdropFilter'
+export type { LynxPluginName };

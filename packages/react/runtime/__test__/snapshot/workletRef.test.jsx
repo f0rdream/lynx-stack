@@ -20,7 +20,6 @@ beforeAll(() => {
   injectUpdateMainThread();
   replaceCommitHook();
 
-  globalThis.__TESTING_FORCE_RENDER_TO_OPCODE__ = true;
   globalThis.lynxWorkletImpl = {
     _refImpl: {
       updateWorkletRef: vi.fn(),
@@ -30,6 +29,11 @@ beforeAll(() => {
     _runOnBackgroundDelayImpl: {
       runDelayedBackgroundFunctions: vi.fn(),
     },
+    _eventDelayImpl: {
+      runDelayedWorklet: vi.fn(),
+      clearDelayedWorklets: vi.fn(),
+    },
+    _hydrateCtx: vi.fn(),
   };
   globalThis.runWorklet = vi.fn();
 });
@@ -334,6 +338,15 @@ describe('WorkletRef', () => {
           ],
           [
             {
+              "_unmount": undefined,
+              "_wkltId": 233,
+            },
+            [
+              null,
+            ],
+          ],
+          [
+            {
               "_execId": 2,
               "_unmount": undefined,
               "_wkltId": 233,
@@ -344,15 +357,6 @@ describe('WorkletRef', () => {
                   has-react-ref={true}
                 />,
               },
-            ],
-          ],
-          [
-            {
-              "_unmount": undefined,
-              "_wkltId": 233,
-            },
-            [
-              null,
             ],
           ],
           [
@@ -371,7 +375,7 @@ describe('WorkletRef', () => {
           ],
         ]
       `);
-      globalThis.runWorklet.mock.calls[1][0]._unmount = cleanup;
+      globalThis.runWorklet.mock.calls[2][0]._unmount = cleanup;
     }
 
     // update

@@ -5,10 +5,8 @@
 import {
   type LynxTemplate,
   type PageConfig,
-  type StyleInfo,
   type FlushElementTreeOptions,
   type Cloneable,
-  type CssInJsInfo,
   type BrowserConfig,
   lynxUniqueIdAttribute,
   type publishEventEndpoint,
@@ -16,7 +14,6 @@ import {
   type reportErrorEndpoint,
   type RpcCallType,
   type LynxContextEventTarget,
-  type LynxJSModule,
   systemInfo,
   type AddEventPAPI,
   type GetEventsPAPI,
@@ -53,18 +50,17 @@ import {
   type SetCSSIdPAPI,
   type AddClassPAPI,
   type SetClassesPAPI,
-  type GetTemplatePartsPAPI,
   type GetPageElementPAPI,
   type MinimalRawEventObject,
+  type I18nResourceTranslationOptions,
+  lynxDisposedAttribute,
+  type SSRHydrateInfo,
+  type SSRDehydrateHooks,
+  type ElementTemplateData,
+  type ElementFromBinaryPAPI,
+  type JSRealm,
 } from '@lynx-js/web-constants';
-import { globalMuteableVars } from '@lynx-js/web-constants';
 import { createMainThreadLynx } from './createMainThreadLynx.js';
-import {
-  flattenStyleInfo,
-  genCssContent,
-  genCssInJsInfo,
-  transformToWebCss,
-} from './utils/processStyleInfo.js';
 import {
   __AddClass,
   __AddConfig,
@@ -84,8 +80,11 @@ import {
   __GetID,
   __GetParent,
   __GetTag,
+  __GetTemplateParts,
   __InsertElementBefore,
   __LastElement,
+  __MarkPartElement,
+  __MarkTemplateElement,
   __NextElement,
   __RemoveElement,
   __ReplaceElement,
@@ -97,104 +96,89 @@ import {
   __SetID,
   __SetInlineStyles,
   __UpdateComponentID,
+  __UpdateComponentInfo,
+  __GetAttributeByName,
 } from './pureElementPAPIs.js';
 import { createCrossThreadEvent } from './utils/createCrossThreadEvent.js';
-import { decodeCssInJs } from './utils/decodeCssInJs.js';
+
+const exposureRelatedAttributes = new Set<string>([
+  'exposure-id',
+  'exposure-area',
+  'exposure-screen-margin-top',
+  'exposure-screen-margin-right',
+  'exposure-screen-margin-bottom',
+  'exposure-screen-margin-left',
+  'exposure-ui-margin-top',
+  'exposure-ui-margin-right',
+  'exposure-ui-margin-bottom',
+  'exposure-ui-margin-left',
+]);
 
 export interface MainThreadRuntimeCallbacks {
   mainChunkReady: () => void;
   flushElementTree: (
     options: FlushElementTreeOptions,
     timingFlags: string[],
+    exposureChangedElements: WebFiberElementImpl[],
   ) => void;
   _ReportError: RpcCallType<typeof reportErrorEndpoint>;
   __OnLifecycleEvent: (lifeCycleEvent: Cloneable) => void;
   markTiming: (pipelineId: string, timingKey: string) => void;
   publishEvent: RpcCallType<typeof publishEventEndpoint>;
   publicComponentEvent: RpcCallType<typeof publicComponentEventEndpoint>;
-  createElement: (tag: string) => WebFiberElementImpl;
+  _I18nResourceTranslation: (
+    options: I18nResourceTranslationOptions,
+  ) => unknown | undefined;
+  updateCssOGStyle: (
+    uniqueId: number,
+    newClassName: string,
+    cssID: string | null,
+  ) => void;
 }
 
 export interface MainThreadRuntimeConfig {
   pageConfig: PageConfig;
   globalProps: unknown;
   callbacks: MainThreadRuntimeCallbacks;
-  styleInfo: StyleInfo;
-  customSections: LynxTemplate['customSections'];
-  lepusCode: Record<string, LynxJSModule>;
+  lynxTemplate: LynxTemplate;
   browserConfig: BrowserConfig;
   tagMap: Record<string, string>;
-  rootDom: Pick<Element, 'append' | 'addEventListener'>;
+  rootDom:
+    & Pick<Element, 'append' | 'addEventListener'>
+    & Partial<Pick<ShadowRoot, 'querySelectorAll' | 'cloneNode'>>;
   jsContext: LynxContextEventTarget;
+  ssrHydrateInfo?: SSRHydrateInfo;
+  ssrHooks?: SSRDehydrateHooks;
+  mtsRealm: JSRealm;
+  document: Document;
 }
 
 export function createMainThreadGlobalThis(
   config: MainThreadRuntimeConfig,
 ): MainThreadGlobalThis {
-  let pageElement!: WebFiberElementImpl;
-  let uniqueIdInc = 1;
   let timingFlags: string[] = [];
-  let renderPage: MainThreadGlobalThis['renderPage'];
   const {
     callbacks,
     tagMap,
     pageConfig,
-    lepusCode,
+    lynxTemplate,
     rootDom,
     globalProps,
-    styleInfo,
+    ssrHydrateInfo,
+    ssrHooks,
+    mtsRealm,
+    document,
   } = config;
-  const lynxUniqueIdToElement: WeakRef<WebFiberElementImpl>[] = [];
+  const { elementTemplate, lepusCode } = lynxTemplate;
+  const lynxUniqueIdToElement: WeakRef<WebFiberElementImpl>[] =
+    ssrHydrateInfo?.lynxUniqueIdToElement ?? [];
   const elementToRuntimeInfoMap: WeakMap<WebFiberElementImpl, LynxRuntimeInfo> =
     new WeakMap();
-  const lynxUniqueIdToStyleRulesIndex: number[] = [];
-  /**
-   * for "update" the globalThis.val in the main thread
-   */
-  const varsUpdateHandlers: (() => void)[] = [];
-  const lynxGlobalBindingValues: Record<string, any> = {};
 
-  /**
-   * now create the style content
-   * 1. flatten the styleInfo
-   * 2. transform the styleInfo to web css
-   * 3. generate the css in js info
-   * 4. create the style element
-   * 5. append the style element to the root dom
-   */
-  flattenStyleInfo(
-    styleInfo,
-    pageConfig.enableCSSSelector,
-  );
-  transformToWebCss(styleInfo);
-  const cssInJsInfo: CssInJsInfo = pageConfig.enableCSSSelector
-    ? {}
-    : genCssInJsInfo(styleInfo);
-  const cardStyleElement = callbacks.createElement('style');
-  cardStyleElement.innerHTML = genCssContent(
-    styleInfo,
-    pageConfig,
-  );
-  // @ts-expect-error
-  rootDom.append(cardStyleElement);
-  const cardStyleElementSheet =
-    (cardStyleElement as unknown as HTMLStyleElement).sheet!;
-  const updateCSSInJsStyle: (
-    uniqueId: number,
-    newStyles: string,
-  ) => void = (uniqueId, newStyles) => {
-    if (lynxUniqueIdToStyleRulesIndex[uniqueId] !== undefined) {
-      const rule = cardStyleElementSheet
-        .cssRules[lynxUniqueIdToStyleRulesIndex[uniqueId]] as CSSStyleRule;
-      rule.style.cssText = newStyles;
-    } else {
-      const index = cardStyleElementSheet.insertRule(
-        `[${lynxUniqueIdAttribute}="${uniqueId}"]{${newStyles}}`,
-        cardStyleElementSheet.cssRules.length,
-      );
-      lynxUniqueIdToStyleRulesIndex[uniqueId] = index;
-    }
-  };
+  let pageElement: WebFiberElementImpl | undefined = lynxUniqueIdToElement[1]
+    ?.deref();
+  let uniqueIdInc = lynxUniqueIdToElement.length || 1;
+  const exposureChangedElements = new Set<WebFiberElementImpl>();
 
   const commonHandler = (event: Event) => {
     if (!event.currentTarget) {
@@ -246,7 +230,8 @@ export function createMainThreadGlobalThis(
           (crossThreadEvent as MainThreadScriptEvent).currentTarget!
             .elementRefptr = event.currentTarget;
         }
-        mtsGlobalThis.runWorklet?.(hname.value, [crossThreadEvent]);
+        (mtsRealm.globalWindow as typeof globalThis & MainThreadGlobalThis)
+          .runWorklet?.(hname.value, [crossThreadEvent]);
       }
     }
     return false;
@@ -283,6 +268,12 @@ export function createMainThreadGlobalThis(
         element.removeEventListener(eventName, currentRegisteredHandler, {
           capture: isCapture,
         });
+        // remove the exposure id if the exposure-id is a placeholder value
+        const isExposure = eventName === 'uiappear'
+          || eventName === 'uidisappear';
+        if (isExposure && element.getAttribute('exposure-id') === '-1') {
+          mtsGlobalThis.__SetAttribute(element, 'exposure-id', null);
+        }
       }
     } else {
       /**
@@ -295,6 +286,12 @@ export function createMainThreadGlobalThis(
         element.addEventListener(htmlEventName, currentRegisteredHandler, {
           capture: isCapture,
         });
+        // add exposure id if no exposure-id is set
+        const isExposure = eventName === 'uiappear'
+          || eventName === 'uidisappear';
+        if (isExposure && element.getAttribute('exposure-id') === null) {
+          mtsGlobalThis.__SetAttribute(element, 'exposure-id', '-1');
+        }
       }
     }
     if (newEventHandler) {
@@ -378,7 +375,9 @@ export function createMainThreadGlobalThis(
   ) => {
     const uniqueId = uniqueIdInc++;
     const htmlTag = tagMap[tag] ?? tag;
-    const element = callbacks.createElement(htmlTag);
+    const element = document.createElement(
+      htmlTag,
+    ) as unknown as WebFiberElementImpl;
     lynxUniqueIdToElement[uniqueId] = new WeakRef(element);
     const parentComponentCssID = lynxUniqueIdToElement[parentComponentUniqueId]
       ?.deref()?.getAttribute(cssIdAttribute);
@@ -430,6 +429,7 @@ export function createMainThreadGlobalThis(
     page.setAttribute(cssIdAttribute, cssID + '');
     page.setAttribute(parentComponentUniqueIdAttribute, '0');
     page.setAttribute(componentIdAttribute, componentID);
+    __MarkTemplateElement(page);
     if (pageConfig.defaultDisplayLinear === false) {
       page.setAttribute(lynxDefaultDisplayLinearAttribute, 'false');
     }
@@ -505,6 +505,10 @@ export function createMainThreadGlobalThis(
       if (key === __lynx_timing_flag && value) {
         timingFlags.push(value as string);
       }
+      if (exposureRelatedAttributes.has(key)) {
+        // if the attribute is related to exposure, we need to mark the element as changed
+        exposureChangedElements.add(element);
+      }
     }
   };
 
@@ -523,14 +527,15 @@ export function createMainThreadGlobalThis(
     runtimeInfo.enqueueComponent = enqueueComponent;
     elementToRuntimeInfoMap.set(element, runtimeInfo);
   };
-
   const __SwapElement: SwapElementPAPI = (
     childA,
     childB,
   ) => {
-    const temp = callbacks.createElement('div');
+    const temp = document.createElement('div');
+    // @ts-expect-error fixme
     childA.replaceWith(temp);
     childB.replaceWith(childA);
+    // @ts-expect-error fixme
     temp.replaceWith(childB);
   };
 
@@ -553,14 +558,12 @@ export function createMainThreadGlobalThis(
       ((element.getAttribute('class') ?? '') + ' ' + className)
         .trim();
     element.setAttribute('class', newClassName);
-    const newStyleStr = decodeCssInJs(
+    const cssId = element.getAttribute(cssIdAttribute);
+    const uniqueId = Number(element.getAttribute(lynxUniqueIdAttribute));
+    callbacks.updateCssOGStyle(
+      uniqueId,
       newClassName,
-      cssInJsInfo,
-      element.getAttribute(cssIdAttribute),
-    );
-    updateCSSInJsStyle(
-      Number(element.getAttribute(lynxUniqueIdAttribute)),
-      newStyleStr,
+      cssId,
     );
   };
 
@@ -569,24 +572,22 @@ export function createMainThreadGlobalThis(
     classNames,
   ) => {
     __SetClasses(element, classNames);
-    const newStyleStr = decodeCssInJs(
+    const cssId = element.getAttribute(cssIdAttribute);
+    const uniqueId = Number(element.getAttribute(lynxUniqueIdAttribute));
+    callbacks.updateCssOGStyle(
+      uniqueId,
       classNames ?? '',
-      cssInJsInfo,
-      element.getAttribute(cssIdAttribute),
-    );
-    updateCSSInJsStyle(
-      Number(element.getAttribute(lynxUniqueIdAttribute)),
-      newStyleStr ?? '',
+      cssId,
     );
   };
 
   const __LoadLepusChunk: (path: string) => boolean = (path) => {
-    const lepusModule = lepusCode[`${path}`];
-    if (lepusModule) {
-      const entry = lepusModule.exports;
-      entry?.(mtsGlobalThis);
+    try {
+      path = lepusCode?.[path] ?? path;
+      mtsRealm.loadScriptSync(path);
       return true;
-    } else {
+    } catch (e) {
+      console.error(`failed to load lepus chunk ${path}`, e);
       return false;
     }
   };
@@ -600,24 +601,127 @@ export function createMainThreadGlobalThis(
   ) => {
     const timingFlagsCopied = timingFlags;
     timingFlags = [];
-    if (pageElement && !pageElement.parentNode) {
+    if (
+      pageElement && !pageElement.parentNode
+      && pageElement.getAttribute(lynxDisposedAttribute) !== ''
+    ) {
       // @ts-expect-error
       rootDom.append(pageElement);
     }
-    callbacks.flushElementTree(options, timingFlagsCopied);
-  };
-
-  const __GetTemplateParts: GetTemplatePartsPAPI = () => {
-    return undefined;
+    const exposureChangedElementsArray = Array.from(exposureChangedElements);
+    exposureChangedElements.clear();
+    callbacks.flushElementTree(
+      options,
+      timingFlagsCopied,
+      exposureChangedElementsArray,
+    );
   };
 
   const __GetPageElement: GetPageElementPAPI = () => {
     return pageElement;
   };
 
+  const templateIdToTemplate: Record<string, HTMLTemplateElement> = {};
+
+  const createElementForElementTemplateData = (
+    data: ElementTemplateData,
+    parentComponentUniId: number,
+  ): WebFiberElementImpl => {
+    const element = __CreateElement(data.type, parentComponentUniId);
+    __SetID(element, data.id);
+    data.class && __SetClasses(element, data.class.join(' '));
+    for (const [key, value] of Object.entries(data.attributes || {})) {
+      __SetAttribute(element, key, value);
+    }
+    for (const [key, value] of Object.entries(data.builtinAttributes || {})) {
+      if (key === 'dirtyID' && value === data.id) {
+        __MarkPartElement(element, value);
+      }
+      __SetAttribute(element, key, value);
+    }
+    for (const childData of data.children || []) {
+      __AppendElement(
+        element,
+        createElementForElementTemplateData(childData, parentComponentUniId),
+      );
+    }
+    data.dataset !== undefined && __SetDataset(element, data.dataset);
+    return element;
+  };
+
+  const applyEventsForElementTemplate: (
+    data: ElementTemplateData,
+    element: WebFiberElementImpl,
+  ) => void = (data, element) => {
+    const uniqueId = uniqueIdInc++;
+    element.setAttribute(lynxUniqueIdAttribute, uniqueId + '');
+    for (const event of data.events || []) {
+      const { type, name, value } = event;
+      __AddEvent(element, type, name, value);
+    }
+    for (let ii = 0; ii < (data.children || []).length; ii++) {
+      const childData = (data.children || [])[ii];
+      const childElement = element.children[ii] as WebFiberElementImpl;
+      if (childData && childElement) {
+        applyEventsForElementTemplate(childData, childElement);
+      }
+    }
+  };
+
+  const __ElementFromBinary: ElementFromBinaryPAPI = (
+    templateId,
+    parentComponentUniId,
+  ) => {
+    const elementTemplateData = elementTemplate[templateId];
+    if (elementTemplateData) {
+      let clonedElements: WebFiberElementImpl[];
+      if (templateIdToTemplate[templateId]) {
+        clonedElements = Array.from(
+          (templateIdToTemplate[templateId].content.cloneNode(
+            true,
+          ) as DocumentFragment).children,
+        ) as unknown as WebFiberElementImpl[];
+      } else {
+        clonedElements = elementTemplateData.map(data =>
+          createElementForElementTemplateData(data, parentComponentUniId)
+        );
+        if (rootDom.cloneNode) {
+          const template = document.createElement(
+            'template',
+          ) as unknown as HTMLTemplateElement;
+          template.content.append(...clonedElements as unknown as Node[]);
+          templateIdToTemplate[templateId] = template;
+          rootDom.append(template);
+          return __ElementFromBinary(templateId, parentComponentUniId);
+        }
+      }
+      for (let ii = 0; ii < clonedElements.length; ii++) {
+        const data = elementTemplateData[ii];
+        const element = clonedElements[ii];
+        if (data && element) {
+          applyEventsForElementTemplate(data, element);
+        }
+      }
+      clonedElements.forEach(__MarkTemplateElement);
+      return clonedElements;
+    }
+    return [];
+  };
+
+  let release = '';
   const isCSSOG = !pageConfig.enableCSSSelector;
+  const SystemInfo = {
+    ...systemInfo,
+    ...config.browserConfig,
+  };
   const mtsGlobalThis: MainThreadGlobalThis = {
-    __AddEvent,
+    __ElementFromBinary,
+    __GetTemplateParts: rootDom.querySelectorAll
+      ? __GetTemplateParts
+      : undefined,
+    __MarkTemplateElement,
+    __MarkPartElement,
+    __AddEvent: ssrHooks?.__AddEvent ?? __AddEvent,
     __GetEvent,
     __GetEvents,
     __SetEvents,
@@ -646,6 +750,7 @@ export function createMainThreadGlobalThis(
     __SetDataset,
     __SetID,
     __UpdateComponentID,
+    __UpdateComponentInfo,
     __CreateElement,
     __CreateView,
     __CreateText,
@@ -660,6 +765,7 @@ export function createMainThreadGlobalThis(
     __SwapElement,
     __UpdateListCallbacks,
     __GetConfig: __GetElementConfig,
+    __GetAttributeByName,
     __GetClasses,
     __AddClass: isCSSOG ? __AddClassForCSSOG : __AddClass,
     __SetClasses: isCSSOG ? __SetClassesForCSSOG : __SetClasses,
@@ -668,59 +774,29 @@ export function createMainThreadGlobalThis(
     __SetInlineStyles,
     __LoadLepusChunk,
     __GetPageElement,
-    __GetTemplateParts,
     __globalProps: globalProps,
-    SystemInfo: {
-      ...systemInfo,
-      ...config.browserConfig,
-    },
-    lynx: createMainThreadLynx(config),
-    _ReportError: callbacks._ReportError,
+    SystemInfo,
+    lynx: createMainThreadLynx(config, SystemInfo),
+    _ReportError: (err, _) => callbacks._ReportError(err, _, release),
+    _SetSourceMapRelease: (errInfo) => release = errInfo?.release,
     __OnLifecycleEvent: callbacks.__OnLifecycleEvent,
     __FlushElementTree,
-    __lynxGlobalBindingValues: lynxGlobalBindingValues,
-    set _updateVars(handler: () => void) {
-      varsUpdateHandlers.push(handler);
+    _I18nResourceTranslation: callbacks._I18nResourceTranslation,
+    _AddEventListener: () => {},
+    renderPage: undefined,
+  };
+  Object.assign(mtsRealm.globalWindow, mtsGlobalThis);
+  Object.defineProperty(mtsRealm.globalWindow, 'renderPage', {
+    get() {
+      return mtsGlobalThis.renderPage;
     },
-    set renderPage(foo: (data: unknown) => void) {
-      renderPage = foo;
+    set(v) {
+      mtsGlobalThis.renderPage = v;
       queueMicrotask(callbacks.mainChunkReady);
     },
-    get renderPage() {
-      return renderPage!;
-    },
-  };
-  mtsGlobalThis.globalThis = new Proxy(mtsGlobalThis, {
-    get: (target, prop) => {
-      if (prop === 'globalThis') {
-        return target;
-      }
-      // @ts-expect-error
-      return target[prop] ?? globalThis[prop];
-    },
-    set: (target, prop, value) => {
-      // @ts-expect-error
-      target[prop] = value;
-      return true;
-    },
-    ownKeys(target) {
-      return Reflect.ownKeys(target).filter((key) => key !== 'globalThis');
-    },
+    configurable: true,
+    enumerable: true,
   });
 
-  for (const nm of globalMuteableVars) {
-    Object.defineProperty(mtsGlobalThis, nm, {
-      get: () => {
-        return lynxGlobalBindingValues[nm];
-      },
-      set: (v: any) => {
-        lynxGlobalBindingValues[nm] = v;
-        for (const handler of varsUpdateHandlers) {
-          handler();
-        }
-      },
-    });
-  }
-
-  return mtsGlobalThis;
+  return mtsRealm.globalWindow as typeof globalThis & MainThreadGlobalThis;
 }

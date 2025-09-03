@@ -1,5 +1,251 @@
 # @lynx-js/react
 
+## 0.112.5
+
+### Patch Changes
+
+- Remove the "key is not on root element of snapshot" warning. ([#1558](https://github.com/lynx-family/lynx-stack/pull/1558))
+
+## 0.112.4
+
+### Patch Changes
+
+- fix `withInitDataInState` got wrong state in 2nd or more times `defaultDataProcessor`, now it will keep its own state. ([#1478](https://github.com/lynx-family/lynx-stack/pull/1478))
+
+- change `__CreateElement('raw-text')` to `__CreateRawText('')` to avoid `setNativeProps` not working ([#1570](https://github.com/lynx-family/lynx-stack/pull/1570))
+
+- Fix wrong render result when using expression as `key`. ([#1541](https://github.com/lynx-family/lynx-stack/pull/1541))
+
+  See [lynx-family/lynx-stack#1371](https://github.com/lynx-family/lynx-stack/issues/1371) for more details.
+
+- fix: `Cannot read properties of undefined` error when using `Suspense` ([#1569](https://github.com/lynx-family/lynx-stack/pull/1569))
+
+- Add `animate` API in Main Thread Script(MTS), so you can now control a CSS animation imperatively ([#1534](https://github.com/lynx-family/lynx-stack/pull/1534))
+
+  ```ts
+  import type { MainThread } from '@lynx-js/types';
+
+  function startAnimation(ele: MainThread.Element) {
+    'main thread';
+    const animation = ele.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: 3000,
+    });
+
+    // Can also be paused
+    // animation.pause()
+  }
+  ```
+
+## 0.112.3
+
+### Patch Changes
+
+- fix css transform error in testing library ([#1500](https://github.com/lynx-family/lynx-stack/pull/1500))
+
+- fix the type error of `wrapper` option in testing library's `render` and `renderHook` function ([#1502](https://github.com/lynx-family/lynx-stack/pull/1502))
+
+- Introduce recursive hydration for lists to prevent double remove/insert on moves. ([#1401](https://github.com/lynx-family/lynx-stack/pull/1401))
+
+- Handle `<frame/>` correctly. ([#1497](https://github.com/lynx-family/lynx-stack/pull/1497))
+
+## 0.112.2
+
+### Patch Changes
+
+- Supports `recyclable` attribute in `<list-item>` to control whether the list item is recyclable. The `recyclable` attribute depends on Lynx Engine 3.4 or later. ([#1388](https://github.com/lynx-family/lynx-stack/pull/1388))
+
+  ```jsx
+  <list-item recyclable={false} />;
+  ```
+
+- feat: Support using a host element as direct child of Suspense ([#1455](https://github.com/lynx-family/lynx-stack/pull/1455))
+
+- Add profile in production build: ([#1336](https://github.com/lynx-family/lynx-stack/pull/1336))
+
+  1. `diff:__COMPONENT_NAME__`: how long ReactLynx diff took.
+  2. `render:__COMPONENT_NAME__`: how long your render function took.
+  3. `setState`: an instant trace event, indicate when your setState was called.
+
+  NOTE: `__COMPONENT_NAME__` may be unreadable when minified, setting `displayName` may help.
+
+- Add `onBackgroundSnapshotInstanceUpdateId` event on dev for Preact Devtools to keep the correct snapshotInstanceId info. ([#1173](https://github.com/lynx-family/lynx-stack/pull/1173))
+
+- fix: Prevent error when spreading component props onto an element ([#1459](https://github.com/lynx-family/lynx-stack/pull/1459))
+
+- fix: Correctly check for the existence of background functions in MTS ([#1416](https://github.com/lynx-family/lynx-stack/pull/1416))
+
+  ```ts
+  function handleTap() {
+    'main thread';
+    // The following check always returned false before this fix
+    if (myHandleTap) {
+      runOnBackground(myHandleTap)();
+    }
+  }
+  ```
+
+## 0.112.1
+
+### Patch Changes
+
+- Fix crash caused by not removing event listeners during destroy. ([#1379](https://github.com/lynx-family/lynx-stack/pull/1379))
+
+- Fix missing "type" in "update-list-info" in hydrate ([#1392](https://github.com/lynx-family/lynx-stack/pull/1392))
+
+## 0.112.0
+
+### Minor Changes
+
+- feat: Force synchronous rendering for background initial renders to support Suspense fallbacks ([#1323](https://github.com/lynx-family/lynx-stack/pull/1323))
+
+- Introduces `@lynx-js/react/compat` submodule exporting Preact implementations of: ([#1316](https://github.com/lynx-family/lynx-stack/pull/1316))
+
+  - `startTransition`
+  - `useTransition`
+
+### Patch Changes
+
+- fix: Ensure useEffect callbacks execute before event handlers from the same render cycle ([#1348](https://github.com/lynx-family/lynx-stack/pull/1348))
+
+- Enable rendering of the `Suspense` fallback on initial render. ([#1285](https://github.com/lynx-family/lynx-stack/pull/1285))
+
+- fix: Prevent "cannot set property 'current' of undefined" error thrown by MainThreadRef on engine data updates ([#1342](https://github.com/lynx-family/lynx-stack/pull/1342))
+
+## 0.111.2
+
+### Patch Changes
+
+- Optimize `componentAtIndex` by a few hundreds microseconds: avoiding manipulate `__pendingListUpdates` unless SnapshotInstance tree is changed ([#1201](https://github.com/lynx-family/lynx-stack/pull/1201))
+
+- Support alog of component rendering on production for better error reporting. Enable it by using `REACT_ALOG=true rspeedy dev/build` or defining `__ALOG__` to `true` in `lynx.config.js`: ([#1164](https://github.com/lynx-family/lynx-stack/pull/1164))
+
+  ```js
+  export default defineConfig({
+    // ...
+    source: {
+      define: {
+        __ALOG__: true,
+      },
+    },
+  });
+  ```
+
+- Make `preact/debug` work with `@lynx-js/react`. ([#1222](https://github.com/lynx-family/lynx-stack/pull/1222))
+
+- Introduce `@lynx-js/react/debug` which would include debugging warnings and error messages for common mistakes found. ([#1250](https://github.com/lynx-family/lynx-stack/pull/1250))
+
+  Add the import to `@lynx-js/react/debug` at the first line of the entry:
+
+  ```js
+  import '@lynx-js/react/debug';
+  import { root } from '@lynx-js/react';
+
+  import { App } from './App.jsx';
+
+  root.render(<App />);
+  ```
+
+- `<list-item/>` deferred now accepts an object with `unmountRecycled` property to control unmounting behavior when the item is recycled. ([#1302](https://github.com/lynx-family/lynx-stack/pull/1302))
+
+  For example, you can use it like this:
+
+  ```jsx
+  <list-item defer={{ unmountRecycled: true }} item-key='1'>
+    <WillBeUnmountIfRecycled />
+  </list-item>;
+  ```
+
+  Now the component will be unmounted when it is recycled, which can help with performance in certain scenarios.
+
+- Avoid some unexpected `__SetAttribute` in hydrate when `undefined` is passed as an attribute value to intrinsic elements, for example: ([#1318](https://github.com/lynx-family/lynx-stack/pull/1318))
+
+  ```jsx
+  <image async-mode={undefined} />;
+  ```
+
+## 0.111.1
+
+### Patch Changes
+
+- Wrap the main thread `renderPage` in preact `act` to ensure that the effects are flushed. ([#1170](https://github.com/lynx-family/lynx-stack/pull/1170))
+
+## 0.111.0
+
+### Minor Changes
+
+- Allow some `<list-item/>`s to be deferred and rendered in the background thread. ([#204](https://github.com/lynx-family/lynx-stack/pull/204))
+
+  Use the following syntax:
+
+  ```diff
+  <list>
+  -  <list-item item-key="...">
+  +  <list-item item-key="..." defer>
+        <SomeHeavyComponent />
+    </list-item>
+  </list>
+  ```
+
+  You should render your heavyweight components with the `defer` attribute to avoid blocking the main thread.
+
+### Patch Changes
+
+- Add missing alias of `@lynx-js/react` and `preact` in testing library, it will fix the `Failed to resolve import "@lynx-js/react/internal"` error in node_modules. ([#1182](https://github.com/lynx-family/lynx-stack/pull/1182))
+
+- Allow any types of `dataProcessors` in `lynx.registerDataProcessors`. ([#1200](https://github.com/lynx-family/lynx-stack/pull/1200))
+
+- Make `loadLazyBundle` being able to render the content on the first screen of the background thread. ([#1212](https://github.com/lynx-family/lynx-stack/pull/1212))
+
+- Fixed: An issue where the `lynxViewDidUpdate` callback did not trigger when data was updated from native. ([#1171](https://github.com/lynx-family/lynx-stack/pull/1171))
+
+  Notice:
+
+  - Even if no data changes are actually processed after calling `updateData()`, the `lynxViewDidUpdate` callback will still be triggered.
+  - Only one `lynxViewDidUpdate` callback will be triggered per render cycle. Consequently, if multiple `updateData()` calls are made within a single cycle but the data updates are batched, the number of `lynxViewDidUpdate` callbacks triggered may be less than the number of `updateData()` calls.
+
+- Supports `act` in testing library. ([#1182](https://github.com/lynx-family/lynx-stack/pull/1182))
+
+  ```js
+  import { act } from '@lynx-js/react/testing-library';
+
+  act(() => {
+    // ...
+  });
+  ```
+
+## 0.110.1
+
+### Patch Changes
+
+- Fix a memory leak when using `<list/>`. ([#1144](https://github.com/lynx-family/lynx-stack/pull/1144))
+
+## 0.110.0
+
+### Minor Changes
+
+- Fixed closure variable capture issue in effect hooks to prevent stale values and ensured proper execution order between refs, effects, and event handlers. ([#770](https://github.com/lynx-family/lynx-stack/pull/770))
+
+  **Breaking Changes**:
+
+  - The execution timing of `ref`, `useEffect()` callback, `componentDidMount`, `componentDidUpdate`, `componentWillUnmount` and the callback of `setState` have been moved forward. These effects will now execute before hydration is complete, rather than waiting for the main thread update to complete.
+  - For components inside `<list />`, `ref` callbacks will now be triggered during background thread rendering, regardless of component visibility. If your code depends on component visibility timing, use `main-thread:ref` instead of regular `ref`.
+
+### Patch Changes
+
+- Fixed two memory leaks: ([#1071](https://github.com/lynx-family/lynx-stack/pull/1071))
+
+  1. When JSX is rendered on the main thread and removed, FiberElement can still be referenced by `__root.__jsx` through `props.children`;
+
+  2. When the SnapshotInstance tree is removed from the root node, its child nodes form a cycle reference because the `__previousSibling` and `__nextSibling` properties point to each other, thus causing a FiberElement leak.
+
+- Optimize the error message when snapshots cannot be found in the main thread. ([#1083](https://github.com/lynx-family/lynx-stack/pull/1083))
+
+- Fix a problem causing `MainThreadRef`s to not be updated correctly during hydration when they are set to `main-thread:ref`s. ([#1001](https://github.com/lynx-family/lynx-stack/pull/1001))
+
+- Add snapshot id report when throwing `snapshotPatchApply failed: ctx not found` error. ([#1107](https://github.com/lynx-family/lynx-stack/pull/1107))
+
+- Fix a bug in ReactLynx Testing Library that rendered snapshot of inline style was normalized incorrectly (eg. `flex:1` was normalized to `flex: 1 1 0%;` incorrectly). ([#1040](https://github.com/lynx-family/lynx-stack/pull/1040))
+
 ## 0.109.2
 
 ### Patch Changes

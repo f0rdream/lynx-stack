@@ -10,11 +10,19 @@ export const componentIdAttribute = 'l-comp-id' as const;
 
 export const parentComponentUniqueIdAttribute = 'l-p-comp-uid' as const;
 
+export const lynxEntryNameAttribute = 'l-e-name' as const;
+
 export const lynxTagAttribute = 'lynx-tag' as const;
 
 export const lynxDatasetAttribute = 'l-dset' as const;
 
 export const lynxComponentConfigAttribute = 'l-comp-cfg' as const;
+
+export const lynxDisposedAttribute = 'l-disposed' as const;
+
+export const lynxElementTemplateMarkerAttribute = 'l-template' as const;
+
+export const lynxPartIdAttribute = 'l-part' as const;
 
 export const lynxDefaultDisplayLinearAttribute =
   'lynx-default-display-linear' as const;
@@ -23,13 +31,6 @@ export const lynxDefaultOverflowVisibleAttribute =
   'lynx-default-overflow-visible' as const;
 
 export const __lynx_timing_flag = '__lynx_timing_flag' as const;
-
-export const globalMuteableVars = [
-  'registerDataProcessor',
-  'registerWorkletInternal',
-  'lynxWorkletImpl',
-  'runWorklet',
-] as const;
 
 export const systemInfo = {
   platform: 'web',

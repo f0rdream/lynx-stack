@@ -6,12 +6,21 @@ interface StyleObject {
   setProperty(property: string, value: string): void;
 }
 
+import { Animation } from './animation/animation.js';
+import { KeyframeEffect } from './animation/effect.js';
+
+let willFlush = false;
+let shouldFlush = true;
+
+export function setShouldFlush(value: boolean): void {
+  shouldFlush = value;
+}
+
 export class Element {
-  private static willFlush: boolean;
+  // @ts-expect-error set in constructor
+  private readonly element: ElementNode;
   private styles = new Map<string, string>();
 
-  // @ts-expect-error internal use
-  private readonly element: ElementNode;
 
   constructor(element: ElementNode) {
     // In Lynx versions prior to and including 2.15,
@@ -222,6 +231,14 @@ export class Element {
     });
   }
 
+  public animate(
+    keyframes: Record<string, number | string>[],
+    options?: number | Record<string, number | string>,
+  ): Animation {
+    const normalizedOptions = typeof options === 'number' ? { duration: options } : options ?? {};
+    return new Animation(new KeyframeEffect(this, keyframes, normalizedOptions));
+  }
+
   public invoke(
     methodName: string,
     params?: Record<string, unknown>,
@@ -244,12 +261,12 @@ export class Element {
   }
 
   private flushElementTree() {
-    if (Element.willFlush) {
+    if (willFlush || !shouldFlush) {
       return;
     }
-    Element.willFlush = true;
+    willFlush = true;
     void Promise.resolve().then(() => {
-      Element.willFlush = false;
+      willFlush = false;
       __FlushElementTree();
     });
   }

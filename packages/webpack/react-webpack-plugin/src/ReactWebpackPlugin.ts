@@ -172,10 +172,12 @@ class ReactWebpackPlugin {
       // We enable profile by default in development.
       // It can also be disabled by environment variable `REACT_PROFILE=false`
       __PROFILE__: JSON.stringify(
-        options.profile
-          ?? process.env['REACT_PROFILE']
+        process.env['REACT_PROFILE']
+          ?? options.profile
           ?? compiler.options.mode === 'development',
       ),
+      // User can enable ALog by environment variable `REACT_ALOG=true`
+      __ALOG__: JSON.stringify(Boolean(process.env['REACT_ALOG'])),
       __EXTRACT_STR__: JSON.stringify(Boolean(options.extractStr)),
       __FIRST_SCREEN_SYNC_TIMING__: JSON.stringify(
         options.firstScreenSyncTiming,
@@ -263,7 +265,6 @@ class ReactWebpackPlugin {
             const runtimeFile = require.resolve(path);
             lepusCode.chunks.push({
               name: 'worklet-runtime',
-              // @ts-expect-error Rspack x Webpack sources not match
               source: new RawSource(fs.readFileSync(
                 runtimeFile,
                 'utf8',
@@ -309,14 +310,14 @@ class ReactWebpackPlugin {
         return args;
       });
 
-      // The react-transform will add `-${LAYER}` to the webpackChunkName.
+      // The react-transform will add `-react__${LAYER}` to the webpackChunkName.
       // We replace it with an empty string here to make sure main-thread & background chunk match.
       hooks.asyncChunkName.tap(
         this.constructor.name,
         (chunkName) =>
           chunkName
-            ?.replaceAll(`-${LAYERS.BACKGROUND}`, '')
-            ?.replaceAll(`-${LAYERS.MAIN_THREAD}`, ''),
+            ?.replaceAll(`-react__background`, '')
+            ?.replaceAll(`-react__main-thread`, ''),
       );
     });
   }

@@ -9,8 +9,7 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, test, vi } from 'vitest'
 
-import { createRspeedy } from '@lynx-js/rspeedy'
-
+import { createStubRspeedy as createRspeedy } from './createRspeedy.js'
 import { pluginStubRspeedyAPI } from './stub-rspeedy-api.plugin.js'
 
 vi
@@ -18,7 +17,7 @@ vi
   .stubEnv('NODE_ENV', 'development')
 
 describe('ReactLynx rsbuild', () => {
-  test('basic usage', { timeout: 10000 }, async () => {
+  test('basic usage', async () => {
     // TODO(react-refresh): support refresh
     vi.stubEnv('NODE_ENV', 'production')
     const { pluginReactLynx } = await import('../src/index.js')

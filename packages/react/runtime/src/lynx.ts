@@ -5,16 +5,19 @@ import { options } from 'preact';
 // to make sure preact's hooks to register earlier than ours
 import './hooks/react.js';
 
+import { initAlog } from './alog/index.js';
+import { setupComponentStack } from './debug/component-stack.js';
 import { initProfileHook } from './debug/profile.js';
 import { document, setupBackgroundDocument } from './document.js';
-import { initDelayUnmount } from './lifecycle/delayUnmount.js';
-import { replaceCommitHook, replaceRequestAnimationFrame } from './lifecycle/patch/commit.js';
+import { replaceCommitHook } from './lifecycle/patch/commit.js';
+import { addCtxNotFoundEventListener } from './lifecycle/patch/error.js';
 import { injectUpdateMainThread } from './lifecycle/patch/updateMainThread.js';
 import { injectCalledByNative } from './lynx/calledByNative.js';
-import { setupLynxTestingEnv } from './lynx/env.js';
+import { setupLynxEnv } from './lynx/env.js';
 import { injectLepusMethods } from './lynx/injectLepusMethods.js';
 import { initTimingAPI } from './lynx/performance.js';
 import { injectTt } from './lynx/tt.js';
+
 export { runWithForce } from './lynx/runWithForce.js';
 
 // @ts-expect-error Element implicitly has an 'any' type because type 'typeof globalThis' has no index signature
@@ -33,25 +36,41 @@ if (__MAIN_THREAD__) {
   }
 }
 
-// TODO: replace this with __PROFILE__
-if (__PROFILE__) {
-  // We are profiling both main-thread and background.
+if (__DEV__) {
+  setupComponentStack();
+}
+
+// We are profiling both main-thread and background.
+if (__MAIN_THREAD__ && __PROFILE__) {
   initProfileHook();
+}
+
+if (typeof __ALOG__ !== 'undefined' && __ALOG__) {
+  // We are logging both main-thread and background.
+  initAlog();
 }
 
 if (__BACKGROUND__) {
   // Trick Preact and TypeScript to accept our custom document adapter.
-  options.document = document as any;
+  options.document = document as unknown as Document;
+  if (lynx.queueMicrotask) {
+    options.requestAnimationFrame = callback => lynx.queueMicrotask(callback);
+  } else if (globalThis.Promise) {
+    const realResolvedPromise = globalThis.Promise.resolve();
+    options.requestAnimationFrame = callback => void realResolvedPromise.then(callback);
+  }
   setupBackgroundDocument();
   injectTt();
+  addCtxNotFoundEventListener();
 
   if (process.env['NODE_ENV'] === 'test') {}
   else {
     replaceCommitHook();
-    replaceRequestAnimationFrame();
     initTimingAPI();
-    initDelayUnmount();
+    if (lynx.performance?.isProfileRecording?.()) {
+      initProfileHook();
+    }
   }
 }
 
-setupLynxTestingEnv();
+setupLynxEnv();

@@ -43,6 +43,20 @@ describe('Config Validation', () => {
     `)
   })
 
+  describe('Config', () => {
+    test('valid type', () => {
+      const cases = [
+        {},
+        () => ({}),
+        new Promise(p => p({})),
+        () => new Promise(p => p({})),
+      ]
+      cases.forEach(config => {
+        expect(validate(config)).toStrictEqual(config)
+      })
+    })
+  })
+
   describe('Dev', () => {
     test('valid type', () => {
       const cases: Dev[] = [
@@ -788,6 +802,18 @@ describe('Config Validation', () => {
         { dataUriLimit: Number.NaN },
         { dataUriLimit: Number.POSITIVE_INFINITY },
         { dataUriLimit: Number.MAX_SAFE_INTEGER },
+        {
+          dataUriLimit: {},
+        },
+        {
+          dataUriLimit: {
+            assets: 0,
+            image: 10,
+            svg: 100,
+            font: 1000,
+            media: 10000,
+          },
+        },
         { cssModules: { auto: true } },
         { cssModules: { auto: false } },
         { cssModules: { auto: /module/ } },
@@ -835,6 +861,24 @@ describe('Config Validation', () => {
         { distPath: { svg: 'svg' } },
         { inlineScripts: true },
         { inlineScripts: false },
+        { inlineScripts: /[\\/]background\.\w+\.js$/ },
+        {
+          inlineScripts: ({ size }) => {
+            return size < 10 * 1000
+          },
+        },
+        {
+          inlineScripts: {
+            enable: 'auto',
+            test: /[\\/]background\.\w+\.js$/,
+          },
+        },
+        {
+          inlineScripts: {
+            enable: true,
+            test: /[\\/]background\.\w+\.js$/,
+          },
+        },
         { legalComments: 'inline' },
         { legalComments: 'none' },
         { legalComments: 'linked' },
@@ -1023,7 +1067,7 @@ describe('Config Validation', () => {
           [Error: Invalid configuration.
 
           Invalid config on \`$input.output.dataUriLimit\`.
-            - Expect to be (number | undefined)
+            - Expect to be (DataUriLimit | number | undefined)
             - Got: string
           ]
         `)
@@ -1099,15 +1143,67 @@ describe('Config Validation', () => {
           ]
         `)
 
-      expect(() => validate({ output: { inlineScripts: null } }))
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: Invalid configuration.
+      expect(() =>
+        validate({
+          output: {
+            inlineScripts: {
+              enable: 123,
+            },
+          },
+        })
+      ).toThrowErrorMatchingInlineSnapshot(`
+        [Error: Invalid configuration.
 
-          Invalid config on \`$input.output.inlineScripts\`.
-            - Expect to be (boolean | undefined)
-            - Got: null
-          ]
-        `)
+        Invalid config on \`$input.output.inlineScripts.enable\`.
+          - Expect to be ("auto" | boolean | undefined)
+          - Got: number
+
+        Invalid config on \`$input.output.inlineScripts.test\`.
+          - Expect to be RegExp
+          - Got: undefined
+        ]
+      `)
+
+      expect(() =>
+        validate({
+          output: {
+            inlineScripts: {
+              enable: true,
+            },
+          },
+        })
+      ).toThrowErrorMatchingInlineSnapshot(`
+        [Error: Invalid configuration.
+
+        Invalid config on \`$input.output.inlineScripts.test\`.
+          - Expect to be RegExp
+          - Got: undefined
+        ]
+      `)
+
+      expect(() =>
+        validate({
+          output: {
+            inlineScripts: {
+              enable: true,
+              test: 123,
+            },
+          },
+        })
+      ).toThrowErrorMatchingInlineSnapshot(`
+        [Error: Invalid configuration.
+
+        Invalid config on \`$input.output.inlineScripts.test\`.
+          - Expect to be RegExp
+          - Got: number
+        ]
+      `)
+
+      //  FIXME:
+      //  ubuntu will matchingInlineSnapshot _type.o111
+      //  macos will matchingInlineSnapshot _type.o110
+      expect(() => validate({ output: { inlineScripts: null } }))
+        .toThrowError()
 
       expect(() => validate({ output: { legalComments: [null] } }))
         .toThrowErrorMatchingInlineSnapshot(`
@@ -1731,7 +1827,13 @@ describe('Config Validation', () => {
       ).toThrowErrorMatchingInlineSnapshot(`
         [Error: Invalid configuration.
 
-        Unknown property: \`$input.resolve\` in configuration
+        Unknown property: \`$input.resolve.aliasFields\` in configuration
+
+        Unknown property: \`$input.resolve.conditionNames\` in configuration
+
+        Unknown property: \`$input.resolve.extensions\` in configuration
+
+        Unknown property: \`$input.resolve.extensionAlias\` in configuration
         ]
       `)
 
@@ -2743,7 +2845,7 @@ describe('Config Validation', () => {
         [Error: Invalid configuration.
 
         Invalid config on \`$input.tools.rspack.devtool\`.
-          - Expect to be ("cheap-module-source-map" | "cheap-source-map" | "eval" | "eval-cheap-module-source-map" | "eval-cheap-source-map" | "eval-nosources-cheap-module-source-map" | "eval-nosources-cheap-source-map" | "eval-nosources-source-map" | "eval-source-map" | "hidden-cheap-module-source-map" | "hidden-cheap-source-map" | "hidden-nosources-cheap-module-source-map" | "hidden-nosources-cheap-source-map" | "hidden-nosources-source-map" | "hidden-source-map" | "inline-cheap-module-source-map" | "inline-cheap-source-map" | "inline-nosources-cheap-module-source-map" | "inline-nosources-cheap-source-map" | "inline-nosources-source-map" | "inline-source-map" | "nosources-cheap-module-source-map" | "nosources-cheap-source-map" | "nosources-source-map" | "source-map" | false | undefined)
+          - Expect to be ("cheap-module-source-map" | "cheap-module-source-map-debugids" | "cheap-source-map" | "cheap-source-map-debugids" | "eval" | "eval-cheap-module-source-map" | "eval-cheap-module-source-map-debugids" | "eval-cheap-source-map" | "eval-cheap-source-map-debugids" | "eval-nosources-cheap-module-source-map" | "eval-nosources-cheap-module-source-map-debugids" | "eval-nosources-cheap-source-map" | "eval-nosources-cheap-source-map-debugids" | "eval-nosources-source-map" | "eval-nosources-source-map-debugids" | "eval-source-map" | "eval-source-map-debugids" | "hidden-cheap-module-source-map" | "hidden-cheap-module-source-map-debugids" | "hidden-cheap-source-map" | "hidden-cheap-source-map-debugids" | "hidden-nosources-cheap-module-source-map" | "hidden-nosources-cheap-module-source-map-debugids" | "hidden-nosources-cheap-source-map" | "hidden-nosources-cheap-source-map-debugids" | "hidden-nosources-source-map" | "hidden-nosources-source-map-debugids" | "hidden-source-map" | "hidden-source-map-debugids" | "inline-cheap-module-source-map" | "inline-cheap-module-source-map-debugids" | "inline-cheap-source-map" | "inline-cheap-source-map-debugids" | "inline-nosources-cheap-module-source-map" | "inline-nosources-cheap-module-source-map-debugids" | "inline-nosources-cheap-source-map" | "inline-nosources-cheap-source-map-debugids" | "inline-nosources-source-map" | "inline-nosources-source-map-debugids" | "inline-source-map" | "inline-source-map-debugids" | "nosources-cheap-module-source-map" | "nosources-cheap-module-source-map-debugids" | "nosources-cheap-source-map" | "nosources-cheap-source-map-debugids" | "nosources-source-map" | "nosources-source-map-debugids" | "source-map" | "source-map-debugids" | false | undefined)
           - Got: string
         ]
       `)

@@ -94,7 +94,9 @@ export const templateXImage = (attributes: { src?: string }) => {
       'detected <script, this is a potential XSS attack, please check your src',
     );
   }
-  return `<img part="img" alt="" id="img" ${src ? `src="${src}"` : ''}/> `;
+  return `<img part="img" alt="" loading="lazy" id="img" ${
+    src ? `src="${src}"` : ''
+  }/> `;
 };
 
 export const templateFilterImage = templateXImage;
@@ -218,6 +220,10 @@ export const templateXRefreshView = `<style>
   ></div>
 </div>`;
 
+/* https://bugs.webkit.org/show_bug.cgi?id=296048
+  The animation name should be defined in the template
+  This is a workaround for safari
+*/
 export const templateXSwiper = `<style>
   #bounce-padding {
     display: none;
@@ -245,6 +251,10 @@ export const templateXSwiper = `<style>
   }
   #indicator-container {
     display: none;
+  }
+  #indicator-container > div {
+    animation-name: indicator-dot;
+    animation-duration: 100ms;
   }
   @keyframes indicator-dot {
     30%,

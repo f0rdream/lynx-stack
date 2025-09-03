@@ -3,24 +3,36 @@
 // LICENSE file in the root directory of this source tree.
 
 import { defineConfig, devices } from '@playwright/test';
+import os from 'node:os';
 
 process.env['LIBGL_ALWAYS_SOFTWARE'] = 'true'; // https://github.com/microsoft/playwright/issues/32151
 process.env['GALLIUM_HUD_SCALE'] = '1';
 const isCI = !!process.env.CI;
-const ALL_ON_UI = !!process.env.ALL_ON_UI;
+const enableMultiThread = !!process.env.ENABLE_MULTI_THREAD;
 const enableSSR = !!process.env.ENABLE_SSR;
 const testFPOnly = !!process.env.TEST_FP_ONLY;
 const port = process.env.PORT ?? 3080;
-const workerLimit = process.env['cpu_limit']
-  ? Math.floor(parseFloat(process.env['cpu_limit']) / 2)
-  : undefined;
+const workerLimit = Math.floor(((cpuCount, envCPULimit) => {
+  if (envCPULimit) {
+    return envCPULimit / 2;
+  } else {
+    if (cpuCount <= 32) {
+      return cpuCount / 2;
+    } else {
+      return 16 + (cpuCount - 32) / 6;
+    }
+  }
+})(os.cpus().length, parseFloat(process.env['cpu_limit'] ?? '0')));
 
 const testMatch: string | undefined = (() => {
   if (testFPOnly) {
     return '**/fp-only.spec.ts';
   }
-  if (ALL_ON_UI || enableSSR) {
-    return '**/{react,web-core}.{test,spec}.ts';
+  if (enableSSR) {
+    return '**/react.{test,spec}.ts';
+  }
+  if (enableMultiThread) {
+    return '**/{react,web-core,main-thread-apis}.{test,spec}.ts';
   }
   return undefined;
 })();
