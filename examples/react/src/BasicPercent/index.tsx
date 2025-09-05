@@ -5,7 +5,7 @@ import type { MainThread } from '@lynx-js/types';
 
 import './styles.css';
 
-export default function BasicPercent() {
+export default function Basic() {
   const animateMTRef = useMainThreadRef<ReturnType<typeof animate> | null>(
     null,
   );
@@ -17,7 +17,7 @@ export default function BasicPercent() {
     if (boxMTRef.current) {
       animateMTRef.current = animate(
         boxMTRef.current,
-        { scale: 0.4, rotate: '45deg' },
+        { scale: 0.4 },
         {
           ease: 'circInOut',
           duration: 1,
@@ -35,9 +35,7 @@ export default function BasicPercent() {
   }
 
   useEffect(() => {
-    setTimeout(() => {
-      void runOnMainThread(startAnimation)();
-    }, 1000);
+    runOnMainThread(startAnimation)();
     return () => {
       runOnMainThread(endAnimation);
     };
@@ -48,11 +46,11 @@ export default function BasicPercent() {
       <view
         main-thread:ref={boxMTRef}
         style={{
-          width: '100px',
+          width: '20%',
           height: '100px',
           backgroundColor: '#8df0cc',
           borderRadius: '10px',
-          transform: 'scale(1.5)'
+          transform: 'scale(1.5) rotate(45deg)'
         }}
       >
       </view>

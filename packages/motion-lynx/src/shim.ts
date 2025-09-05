@@ -46,6 +46,7 @@ if (__MAIN_THREAD__) {
   globalThis.SVGElement = SVGElement;
   // @ts-expect-error error
   globalThis.window = window;
+  globalThis.getComputedStyle = window.getComputedStyle;
   // @ts-expect-error error
   globalThis.HTMLElement = HTMLElement;
 }

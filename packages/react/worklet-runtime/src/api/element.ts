@@ -83,7 +83,7 @@ export class Element {
 
     return new Proxy(styleObject, {
       get: (_target, prop) => {
-        console.log('getStyleFrom style.get', prop)
+        console.log('getComputedStyle2 computedStyle.get', prop, __GetComputedStyleByKey(this.element, prop as string))
         return __GetComputedStyleByKey(this.element, prop as string);
       },
     });
@@ -95,18 +95,25 @@ export class Element {
       styleObject[key] = value;
     });
     styleObject.setProperty = (property: string, value: string) => {
-      console.log('setStyleFrom style.setProperty')
+      // console.log('setStyleFrom style.setProperty')
       this.setStyleProperty(property, value);
     };
     return new Proxy(styleObject, {
       set: (target, prop, value) => {
         if (typeof prop === 'string' && prop !== 'setProperty') {
-          console.log('setStyleFrom style.setter', prop)
+          // console.log('setStyleFrom style.setter', prop)
           this.setStyleProperty(prop, String(value));
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           target[prop] = value;
         }
         return true;
+      },
+      get: (_target, prop) => {
+        console.log('getStyleFrom style.getter', prop)
+        if (typeof prop === 'string' && prop !== 'setProperty') {
+          return this.getStyleProperty(prop);
+        }
+        return undefined;
       },
     });
   }
@@ -117,7 +124,7 @@ export class Element {
 
   // Individual style property getters and setters
   private getStyleProperty(name: string): string {
-    return this.styles.get(name) ?? '';
+    return __GetComputedStyleByKey(this.element, name);
   }
 
   // Common style properties

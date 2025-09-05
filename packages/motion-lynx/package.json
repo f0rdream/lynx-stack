@@ -30,6 +30,6 @@
   ],
   "dependencies": {
     "@lynx-js/react": "workspace:*",
-    "motion": "latest"
+    "motion": "12.23.12"
   }
 }

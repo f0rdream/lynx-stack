@@ -1,5 +1,6 @@
 import { useState } from '@lynx-js/react';
 import Basic from './Basic/index.js';
+import BasicPercent from './BasicPercent/index.js';
 import Stagger from './Stagger/index.js';
 import ColorInterception from './ColorInterception/index.js';
 import Text from './Text/index.js';
@@ -11,6 +12,10 @@ const CASES = [
   {
     name: 'Basic',
     comp: Basic,
+  },
+  {
+    name: 'BasicPercent',
+    comp: BasicPercent,
   },
   {
     name: 'Stagger',

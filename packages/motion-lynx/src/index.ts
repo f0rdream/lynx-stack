@@ -1,14 +1,19 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+import './shim.js';
 
 import { animate, stagger } from 'motion';
 
 import { registerCallable } from './registeredFunction.js';
-import './shim.js';
 
-const animateHandle = registerCallable(animate);
-const staggerHandle = registerCallable(stagger);
+let animateHandle = 1;
+let staggerHandle = 2;
+
+if (__MAIN_THREAD__) {
+  animateHandle = registerCallable(animate, 1);
+  staggerHandle = registerCallable(stagger, 2);
+}
 
 function animateMT(
   ...args: Parameters<typeof animate>

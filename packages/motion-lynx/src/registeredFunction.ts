@@ -7,10 +7,10 @@ import { useMemo, useRef } from '@lynx-js/react';
 const registeredCallableMap = new Map(); // Regular Map for primitive keys
 let globalIdCounter = 0;
 
-export function registerCallable(func: CallableFunction): number {
-  registeredCallableMap.set(++globalIdCounter, func);
+export function registerCallable(func: CallableFunction, id?: number): number {
+  registeredCallableMap.set(id ?? ++globalIdCounter, func);
 
-  return globalIdCounter;
+  return id ?? globalIdCounter;
 }
 
 // Custom hook with auto-incrementing ID
