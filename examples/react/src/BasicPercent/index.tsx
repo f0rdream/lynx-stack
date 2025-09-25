@@ -17,7 +17,7 @@ export default function Basic() {
     if (boxMTRef.current) {
       animateMTRef.current = animate(
         boxMTRef.current,
-        { scale: 0.4 },
+        { width: ['10px', '50%'] },
         {
           ease: 'circInOut',
           duration: 1,
@@ -46,11 +46,10 @@ export default function Basic() {
       <view
         main-thread:ref={boxMTRef}
         style={{
-          width: '20%',
+          width: '300px',
           height: '100px',
           backgroundColor: '#8df0cc',
           borderRadius: '10px',
-          transform: 'scale(1.5) rotate(45deg)'
         }}
       >
       </view>

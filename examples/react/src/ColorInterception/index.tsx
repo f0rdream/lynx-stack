@@ -16,11 +16,12 @@ export default function Basic() {
       animateMTRef.current = animate(
         boxMTRef.current,
         {
-          backgroundColor: ['#ff0088', '#0d63f8'],
+          backgroundColor: '#0d63f8',
         },
         {
           duration: 2,
           repeat: Number.POSITIVE_INFINITY,
+          repeatType: 'reverse',
         },
       );
     }
@@ -46,7 +47,7 @@ export default function Basic() {
         style={{
           width: '100px',
           height: '100px',
-          backgroundColor: '#8df0cc',
+          backgroundColor: '#ff0088',
           borderRadius: '10px',
         }}
       >
