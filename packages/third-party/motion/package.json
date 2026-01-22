@@ -51,7 +51,7 @@
     "motion-utils": "12.23.6"
   },
   "devDependencies": {
-    "@lynx-js/react": "workspace:*",
+    "@lynx-js/react": "0.113.0",
     "@lynx-js/types": "3.4.11"
   },
   "peerDependencies": {
