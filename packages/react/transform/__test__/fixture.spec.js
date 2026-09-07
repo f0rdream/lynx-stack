@@ -2000,6 +2000,25 @@ export function bar() {
     );
   });
 
+  it('should error when an object Main Thread Function uses super', async () => {
+    const result = await transformReactLynx(
+      `\
+const valueType = defineMainThreadObjectType({
+  type: 'example',
+  create() {
+    "main thread";
+    return super.create();
+  },
+});
+`,
+      lepusWorkletOptions,
+    );
+
+    expect(result.errors.map((error) => error.text)).toContain(
+      '`super` is not supported in Main Thread object methods.',
+    );
+  });
+
   it('should error on non-string runtime import attribute', async () => {
     const result = await transformReactLynx(
       `\

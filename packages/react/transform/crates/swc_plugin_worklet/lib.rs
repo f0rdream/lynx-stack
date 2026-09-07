@@ -17,7 +17,7 @@ use swc_core::common::{errors::HANDLER, Span, Spanned, DUMMY_SP};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::utils::{prepend_stmts, private_ident};
 use swc_core::ecma::visit::VisitMutWith;
-use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut};
+use swc_core::ecma::visit::{noop_visit_mut_type, noop_visit_type, Visit, VisitMut, VisitWith};
 use swc_core::quote;
 use worklet_type::WorkletType;
 
@@ -93,6 +93,11 @@ impl VisitMut for WorkletVisitor {
       n.visit_mut_children_with(self);
       return;
     };
+
+    if contains_super_property(&method.function) {
+      emit_unsupported_object_method_super(method.span());
+      return;
+    }
 
     let mut collector = ExtractingIdentsCollector::new(ExtractingIdentsCollectorConfig {
       custom_global_ident_names: self.cfg.custom_global_ident_names.clone(),
@@ -779,11 +784,40 @@ impl VisitMut for WorkletVisitor {
 }
 
 const INVALID_RUNTIME_MSG: &str = "Invalid runtime value. Only 'shared' is supported.";
+const UNSUPPORTED_OBJECT_METHOD_SUPER_MSG: &str =
+  "`super` is not supported in Main Thread object methods.";
 
 fn emit_invalid_runtime_error(span: Span) {
   HANDLER.with(|handler| {
     handler.struct_span_err(span, INVALID_RUNTIME_MSG).emit();
   });
+}
+
+fn emit_unsupported_object_method_super(span: Span) {
+  HANDLER.with(|handler| {
+    handler
+      .struct_span_err(span, UNSUPPORTED_OBJECT_METHOD_SUPER_MSG)
+      .emit();
+  });
+}
+
+#[derive(Default)]
+struct SuperPropertyDetector {
+  found: bool,
+}
+
+impl Visit for SuperPropertyDetector {
+  noop_visit_type!();
+
+  fn visit_super_prop_expr(&mut self, _node: &SuperPropExpr) {
+    self.found = true;
+  }
+}
+
+fn contains_super_property(function: &Function) -> bool {
+  let mut detector = SuperPropertyDetector::default();
+  function.visit_with(&mut detector);
+  detector.found
 }
 
 fn validate_runtime_value(expr: &Expr) -> bool {
@@ -933,6 +967,68 @@ function worklet(event: Event) {
     console.log(this.y1);
     let a: object = y1;
 }
+    "#
+  );
+
+  test!(
+    module,
+    Syntax::Typescript(TsSyntax {
+      ..Default::default()
+    }),
+    |_| (
+      resolver(Mark::new(), Mark::new(), true),
+      visit_mut_pass(WorkletVisitor::new(
+        TransformMode::Test,
+        WorkletVisitorConfig {
+          filename: "index.js".into(),
+          target: TransformTarget::LEPUS,
+          custom_global_ident_names: None,
+          runtime_pkg: "@lynx-js/react".into(),
+        }
+      )),
+      hygiene()
+    ),
+    should_not_capture_object_method_local_decls_lepus,
+    r#"
+const valueType = defineMainThreadObjectType({
+  type: '@test/value',
+  create(initialValue) {
+    "main thread";
+    const state = { value: initialValue };
+    return state;
+  },
+});
+    "#
+  );
+
+  test!(
+    module,
+    Syntax::Typescript(TsSyntax {
+      ..Default::default()
+    }),
+    |_| (
+      resolver(Mark::new(), Mark::new(), true),
+      visit_mut_pass(WorkletVisitor::new(
+        TransformMode::Test,
+        WorkletVisitorConfig {
+          filename: "index.js".into(),
+          target: TransformTarget::LEPUS,
+          custom_global_ident_names: None,
+          runtime_pkg: "@lynx-js/react".into(),
+        }
+      )),
+      hygiene()
+    ),
+    should_not_capture_computed_object_method_key_lepus,
+    r#"
+const name = 'create';
+const valueType = defineMainThreadObjectType({
+  type: '@test/value',
+  [name](initialValue) {
+    "main thread";
+    return { value: initialValue };
+  },
+});
     "#
   );
 

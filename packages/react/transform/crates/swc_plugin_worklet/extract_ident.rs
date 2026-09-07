@@ -407,7 +407,10 @@ impl VisitMut for ExtractingIdentsCollector {
   fn visit_mut_method_prop(&mut self, n: &mut MethodProp) {
     self.push_fn_scope(collect_inner_scope_decls(n));
     self.next_block_decls_collected = true;
-    n.visit_mut_children_with(self);
+    // The computed key belongs to the definition site, not the method's
+    // closure. Capturing it would make an otherwise self-contained factory
+    // depend on a value that is only needed to select the object property.
+    n.function.visit_mut_with(self);
     self.next_block_decls_collected = false;
     self.pop_scope();
   }
