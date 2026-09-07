@@ -15,6 +15,7 @@
     "./lepus/hooks": "./empty.js",
     "./lepus/jsx-dev-runtime": "./empty.js",
     "./lepus/jsx-runtime": "./empty.js",
+    "./main-thread-object": "./empty.js",
     "./package.json": "./package.json",
     "./runtime-components": "./empty.js",
     "./worklet-runtime/bindings": "./empty.js"

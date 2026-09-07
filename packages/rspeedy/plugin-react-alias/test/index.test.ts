@@ -193,6 +193,39 @@ describe('React - alias', () => {
     )
   })
 
+  test('aliases MainThreadObject to the lazy runtime when lazy bundles are enabled', async () => {
+    rstest.stubEnv('NODE_ENV', 'development')
+    const { pluginReactAlias } = await import('../src/index.js')
+
+    const rsbuild = await createRsbuild({
+      rsbuildConfig: {
+        plugins: [
+          pluginReactAlias({
+            LAYERS,
+            lazy: true,
+          }),
+        ],
+      },
+      cwd: path.dirname(fileURLToPath(import.meta.url)),
+    })
+
+    const [config] = await rsbuild.initConfigs()
+
+    if (!config?.resolve?.alias) {
+      expect.fail('should have config.resolve.alias')
+    }
+
+    expect(config.resolve.alias).toHaveProperty(
+      '@lynx-js/react/main-thread-object$',
+      expect.stringContaining(
+        '/packages/react/runtime/lazy/main-thread-object.js'.replaceAll(
+          '/',
+          path.sep,
+        ),
+      ),
+    )
+  })
+
   test('REACT_DEVTOOL=true keeps preact devtools in production', async () => {
     rstest.stubEnv('NODE_ENV', 'production')
     rstest.stubEnv('REACT_DEVTOOL', 'true')

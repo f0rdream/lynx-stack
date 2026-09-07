@@ -472,6 +472,14 @@ describe('MainThreadObject', () => {
     ).toThrow('MainThreadObject type must be a non-empty string.');
     expect(() =>
       defineMainThreadObjectType({
+        type: 'main-thread',
+        create: value => ({ value }),
+      })
+    ).toThrow(
+      'MainThreadObject type "main-thread" is reserved for MainThreadRef.',
+    );
+    expect(() =>
+      defineMainThreadObjectType({
         type: '@test/missing-create',
       })
     ).toThrow(

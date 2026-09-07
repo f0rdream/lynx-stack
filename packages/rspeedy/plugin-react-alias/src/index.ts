@@ -172,6 +172,7 @@ export function pluginReactAlias(options: Options): RsbuildPlugin {
           'experimental/lazy/import',
           'internal',
           'legacy-react-runtime',
+          'main-thread-object',
           'runtime-components',
           'worklet-runtime/bindings',
         ]

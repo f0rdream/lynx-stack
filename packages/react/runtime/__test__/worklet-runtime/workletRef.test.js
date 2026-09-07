@@ -139,6 +139,18 @@ describe('WorkletRef', () => {
     }).toThrow('Conflicting MainThreadObject registration for type "@test/worklet-value"');
   });
 
+  it('reserves the legacy MainThreadRef type key for typed registrations', () => {
+    expect(() => {
+      globalThis.lynxWorkletImpl._refImpl.registerMainThreadObjectType(
+        'main-thread',
+        value => ({ value }),
+        1,
+      );
+    }).toThrow(
+      'MainThreadObject type "main-thread" is reserved for MainThreadRef.',
+    );
+  });
+
   it('allows equivalent registrations from separately evaluated modules', () => {
     const createDefinition = () => value => ({ value });
     const createA = createDefinition();

@@ -156,6 +156,11 @@ export function defineMainThreadObjectType<I, O extends object>(
   if (typeof definition.type !== 'string' || definition.type.length === 0) {
     throw new Error('MainThreadObject type must be a non-empty string.');
   }
+  if (definition.type === 'main-thread') {
+    throw new Error(
+      'MainThreadObject type "main-thread" is reserved for MainThreadRef.',
+    );
+  }
   if (!isMainThreadLifecycleFunction(definition.create)) {
     throw new Error(
       `MainThreadObject type "${definition.type}" must provide a create Main Thread Function.`,

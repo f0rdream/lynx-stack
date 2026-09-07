@@ -77,6 +77,11 @@ function registerMainThreadObjectType(
   create: MainThreadObjectFactory | Worklet,
   protocolVersion: number,
 ): void {
+  if (type === 'main-thread') {
+    throw new Error(
+      'MainThreadObject type "main-thread" is reserved for MainThreadRef.',
+    );
+  }
   assertMainThreadObjectProtocolVersion(type, protocolVersion);
   const registered = mainThreadObjectDefinitions.get(type);
   if (registered) {
