@@ -167,9 +167,8 @@ function assertMainThreadObjectProtocolVersion(type: string, protocolVersion: nu
 }
 
 function isHydratedWorkletValue(value: unknown): value is object {
-  return isMutableCell(value)
-    || (typeof value === 'object' && value !== null
-      && realizedMainThreadObjectMetadata.has(value));
+  return typeof value === 'object' && value !== null
+    && (realizedMainThreadObjectMetadata.has(value) || isMutableCell(value));
 }
 
 function isMutableCell(value: unknown): value is WorkletRef<unknown> {

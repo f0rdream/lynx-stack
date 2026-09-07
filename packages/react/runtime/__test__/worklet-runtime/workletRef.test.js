@@ -385,6 +385,24 @@ describe('WorkletRef', () => {
     expect(() => updateWorkletRefInitValueChanges([[92, null, 'main-thread', undefined]])).not.toThrow();
   });
 
+  it('recognizes realized objects before inspecting their properties', () => {
+    const value = new Proxy({ value: 42 }, {
+      get() {
+        throw new Error('unexpected property access');
+      },
+    });
+    globalThis.lynxWorkletImpl._refImpl.registerMainThreadObjectType(
+      '@test/proxy-value',
+      () => value,
+      1,
+    );
+
+    updateWorkletRefInitValueChanges([[93, null, '@test/proxy-value', 1]]);
+
+    expect(isHydratedWorkletValue(getFromWorkletRefMap({ _wvid: 93 }))).toBe(true);
+    removeValueFromWorkletRefMap(93);
+  });
+
   it('does not hydrate worklet metadata found inside object payloads', () => {
     globalThis.lynxWorkletImpl._refImpl.registerMainThreadObjectType(
       '@test/atomic-hydration-payload',
